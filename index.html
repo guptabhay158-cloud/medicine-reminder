@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smart Medicine Reminder</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#f4f7f5;--ink:#143229;--mute:#5f7a70;--line:#d3dfd9;--taken:#1f8a5b;--miss:#d4503c;--soon:#c98a12;--card:#fff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"Bricolage Grotesque",system-ui,sans-serif;line-height:1.5}
+header{display:flex;justify-content:space-between;align-items:center;padding:16px 24px;background:var(--ink);color:#fff}
+header h1{font-size:20px;margin:0;font-weight:800}
+nav button{background:none;border:0;color:#b9d2c8;font:inherit;padding:6px 12px;cursor:pointer;border-radius:6px}
+nav button.on{background:#fff;color:var(--ink)}
+main{max-width:760px;margin:24px auto;padding:0 16px}
+h2{font-size:26px;margin:0 0 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:12px}
+.dose{display:grid;grid-template-columns:90px 1fr auto;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-left:6px solid var(--soon);border-radius:10px;padding:12px 16px;margin-bottom:8px}
+.dose.TAKEN{border-left-color:var(--taken)}.dose.MISSED{border-left-color:var(--miss)}
+.dose .t{font-weight:800;font-size:18px}.dose small{color:var(--mute)}
+.tag{font-weight:600}.TAKEN .tag{color:var(--taken)}.MISSED .tag{color:var(--miss)}.UPCOMING .tag{color:var(--soon)}
+input,button.b{font:inherit;padding:9px 12px;border:1px solid var(--line);border-radius:8px;width:100%;margin-bottom:10px;background:#fff}
+button.b{background:var(--ink);color:#fff;border:0;cursor:pointer;width:auto;margin:0 6px 0 0}
+button.b.alt{background:#fff;color:var(--ink);border:1px solid var(--line)}button.b.del{background:var(--miss)}
+button:focus-visible,input:focus-visible{outline:3px solid #7fc7a8;outline-offset:2px}
+.row{display:flex;gap:10px}.row>*{flex:1}
+label{font-size:14px;color:var(--mute)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px}
+.stat b{display:block;font-size:30px;font-weight:800}
+.bar{display:grid;grid-template-columns:50px 1fr 50px;align-items:center;gap:10px;margin:8px 0}
+.bar div.f{height:18px;background:var(--line);border-radius:9px;overflow:hidden}.bar i{display:block;height:100%;background:var(--taken)}
+.hidden{display:none}#msg{color:var(--miss);min-height:22px}
+@media(max-width:560px){.stats{grid-template-columns:1fr 1fr}.dose{grid-template-columns:70px 1fr}.dose button{grid-column:1/-1}}
+</style></head><body>
+<header><h1>Smart Medicine Reminder</h1>
+<nav id="nav" class="hidden"><button data-v="dash" class="on">Today</button><button data-v="meds">My medicines</button><button data-v="stats">Analytics</button><button id="out">Log out</button></nav></header>
+<main>
+<p id="msg" role="alert"></p>
+
+<section id="auth"><h2>Log in</h2><div class="card">
+<input id="name" placeholder="Name (only needed to register)">
+<input id="email" type="email" placeholder="Email">
+<input id="pw" type="password" placeholder="Password">
+<button class="b" id="login">Log in</button><button class="b alt" id="reg">Create account</button></div></section>
+
+<section id="dash" class="hidden"><h2>Today's medicines</h2><div id="doses"></div></section>
+
+<section id="meds" class="hidden"><h2>My medicines</h2>
+<div class="card"><b id="ftitle">Add a medicine</b><input type="hidden" id="mid">
+<input id="mname" placeholder="Name, e.g. Paracetamol"><input id="mdose" placeholder="Dosage, e.g. 500 mg">
+<label>Times (comma separated, 24h)</label><input id="mtimes" placeholder="08:00, 20:00">
+<div class="row"><div><label>Start date</label><input id="mstart" type="date"></div><div><label>End date</label><input id="mend" type="date"></div></div>
+<button class="b" id="save">Save medicine</button><button class="b alt" id="cancel">Clear form</button></div>
+<div id="medlist"></div></section>
+<section id="stats" class="hidden">
+
+  <h2>Medication Analytics</h2>
+
+  <!-- Overall summary -->
+  <div class="stats">
+    <div class="stat">
+      <b id="sT">-</b>
+      Taken
+    </div>
+
+    <div class="stat">
+      <b id="sM">-</b>
+      Missed
+    </div>
+
+    <div class="stat">
+      <b id="sTot">-</b>
+      Total
+    </div>
+
+    <div class="stat">
+      <b id="sA">-</b>
+      Adherence
+    </div>
+  </div>
+
+  <!-- Weekly adherence -->
+  <div class="card">
+    <h3>Weekly adherence</h3>
+    <div id="bars"></div>
+  </div>
+
+  <!-- Medicine-wise summary -->
+  <div class="card">
+    <h3>Medicine-wise summary</h3>
+    <div id="medStats">
+      Loading...
+    </div>
+  </div>
+
+  <!-- Dose history -->
+  <div class="card">
+    <h3>Dose history</h3>
+    <div id="history">
+      Loading...
+    </div>
+  </div>
+
+  <!-- Most missed -->
+  <div class="card" id="worst"></div>
+
+  <button class="b alt" id="seed">
+    Load demo data (7 days)
+  </button>
+
+</section>
+</main>
+<script>
+// >>> PASTE YOUR API GATEWAY INVOKE URL HERE (no trailing slash) <<<
+const API = "https://m2zwyqzdai.execute-api.us-east-1.amazonaws.com";
+
+const $ = id => document.getElementById(id);
+let token = sessionStorage.getItem("token");
+const say = t => $("msg").textContent = t || "";
+const t12 = t => { const [h, m] = t.split(":"); return `${(h % 12) || 12}:${m} ${h < 12 ? "AM" : "PM"}`; };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+async function call(path, method = "GET", body) {
+  say();
+  try {
+    const r = await fetch(API + path, {method, headers: {"Content-Type": "application/json", Authorization: token || ""},
+      body: body ? JSON.stringify(body) : undefined});
+    const d = await r.json();
+    if (!r.ok) { say(d.error || "Something went wrong"); if (r.status === 401 && token) logout(); return null; }
+    return d;
+  } catch (e) { say("Cannot reach the server. Check the API URL and CORS settings."); return null; }
+}
+function show(v) {
+  for (const s of ["auth","dash","meds","stats"]) $(s).classList.toggle("hidden", s !== v);
+  document.querySelectorAll("nav button[data-v]").forEach(b => b.classList.toggle("on", b.dataset.v === v));
+  if (v === "dash") loadDoses(); if (v === "meds") loadMeds(); if (v === "stats") loadStats();
+}
+function logout() { sessionStorage.removeItem("token"); token = null; $("nav").classList.add("hidden"); show("auth"); }
+function enter() { $("nav").classList.remove("hidden"); show("dash"); }
+
+$("login").onclick = async () => {
+  const d = await call("/login", "POST", {email: $("email").value, password: $("pw").value});
+  if (d) { token = d.token; sessionStorage.setItem("token", token); enter(); }
+};
+$("reg").onclick = async () => {
+  const d = await call("/register", "POST", {name: $("name").value, email: $("email").value, password: $("pw").value});
+  if (d) say("Account created. Confirm the AWS subscription email, then log in.");
+};
+$("out").onclick = logout;
+document.querySelectorAll("nav button[data-v]").forEach(b => b.onclick = () => show(b.dataset.v));
+
+async function loadDoses() {
+  const d = await call("/doses/today"); if (!d) return;
+  d.sort((a, b) => a.time.localeCompare(b.time));
+  $("doses").innerHTML = d.length ? d.map(x => `<div class="dose ${x.status}"><span class="t">${t12(x.time)}</span>
+    <span>${esc(x.name)}<br><small>${esc(x.dosage)}</small></span>
+    ${x.status === "UPCOMING" ? `<button class="b" data-k="${esc(x.key)}">Mark as taken</button>` : `<span class="tag">${x.status === "TAKEN" ? "Taken" : "Missed"}</span>`}</div>`).join("")
+    : "<p>No doses today. Add a medicine under My medicines.</p>";
+  document.querySelectorAll("[data-k]").forEach(b => b.onclick = async () => { await call("/doses/taken", "POST", {key: b.dataset.k}); loadDoses(); });
+}
+let cache = [];
+async function loadMeds() {
+  cache = await call("/medicines") || [];
+  $("medlist").innerHTML = cache.map((m, i) => `<div class="card"><b>${esc(m.name)}</b> ${esc(m.dosage)}<br>
+    <small>${m.times.map(t12).join(", ")} &nbsp; ${m.startDate} to ${m.endDate}</small><br><br>
+    <button class="b alt" data-e="${i}">Edit</button><button class="b del" data-d="${m.medicineId}">Delete</button></div>`).join("") || "<p>No medicines yet.</p>";
+  document.querySelectorAll("[data-e]").forEach(b => b.onclick = () => { const m = cache[b.dataset.e];
+    $("mid").value = m.medicineId; $("mname").value = m.name; $("mdose").value = m.dosage; $("mtimes").value = m.times.join(", ");
+    $("mstart").value = m.startDate; $("mend").value = m.endDate; $("ftitle").textContent = "Edit medicine"; scrollTo(0, 0); });
+  document.querySelectorAll("[data-d]").forEach(b => b.onclick = async () => { if (confirm("Delete this medicine?")) { await call("/medicines/" + b.dataset.d, "DELETE"); loadMeds(); } });
+}
+const clearForm = () => { ["mid","mname","mdose","mtimes","mstart","mend"].forEach(i => $(i).value = ""); $("ftitle").textContent = "Add a medicine"; };
+$("cancel").onclick = clearForm;
+$("save").onclick = async () => {
+  const times = $("mtimes").value.split(",").map(s => s.trim()).filter(Boolean);
+  if (!$("mname").value || !times.length || !$("mstart").value || !$("mend").value) return say("Fill in the name, times and both dates.");
+  if (!times.every(t => /^([01]\d|2[0-3]):[0-5]\d$/.test(t))) return say("Write times like 08:00 or 20:30.");
+  const body = {name: $("mname").value, dosage: $("mdose").value, times, startDate: $("mstart").value, endDate: $("mend").value};
+  const id = $("mid").value;
+  if (await call(id ? "/medicines/" + id : "/medicines", id ? "PUT" : "POST", body)) { clearForm(); loadMeds(); }
+};
+async function loadStats() {
+
+  const d = await call("/analytics");
+
+  if (!d) return;
+
+  // ---------- Overall statistics ----------
+
+  $("sT").textContent = d.taken;
+  $("sM").textContent = d.missed;
+  $("sTot").textContent = d.total;
+  $("sA").textContent = d.adherence + "%";
+
+
+  // ---------- Weekly adherence ----------
+
+  $("bars").innerHTML = d.days.map(x => `
+    <div class="bar">
+      <span>${x.day}</span>
+
+      <div class="f">
+        <i style="width:${x.pct || 0}%"></i>
+      </div>
+
+      <span>
+        ${x.pct === null ? "n/a" : x.pct + "%"}
+      </span>
+    </div>
+  `).join("");
+
+
+  // ---------- Medicine-wise summary ----------
+
+  if (!d.medicines || !d.medicines.length) {
+
+    $("medStats").innerHTML =
+      "<p>No completed doses yet.</p>";
+
+  } else {
+
+    $("medStats").innerHTML = d.medicines.map(m => `
+      <div class="card">
+
+        <b>${esc(m.name)}</b>
+
+        <br>
+
+        <small>
+          Taken: ${m.taken}
+          &nbsp; | &nbsp;
+          Missed: ${m.missed}
+          &nbsp; | &nbsp;
+          Total: ${m.total}
+        </small>
+
+        <br>
+
+        <strong>
+          Adherence: ${m.adherence}%
+        </strong>
+
+      </div>
+    `).join("");
+  }
+
+
+  // ---------- Detailed dose history ----------
+
+  if (!d.history || !d.history.length) {
+
+    $("history").innerHTML =
+      "<p>No completed dose history yet.</p>";
+
+  } else {
+
+    $("history").innerHTML = d.history.map(x => `
+      <div class="dose ${x.status}">
+
+        <span class="t">
+          ${x.date}<br>
+          ${t12(x.time)}
+        </span>
+
+        <span>
+          <b>${esc(x.name)}</b>
+          <br>
+          <small>${esc(x.dosage)}</small>
+        </span>
+
+        <span class="tag">
+          ${x.status === "TAKEN" ? "Taken" : "Missed"}
+        </span>
+
+      </div>
+    `).join("");
+  }
+
+
+  // ---------- Most frequently missed time ----------
+
+  $("worst").innerHTML = d.mostMissed
+    ? `Most frequently missed time:
+       <b>${t12(d.mostMissed)}</b>`
+    : "No missed doses this week.";
+}
+$("seed").onclick = async () => { if (await call("/seed", "POST")) loadStats(); };
+token ? enter() : show("auth");
+</script></body></html>
